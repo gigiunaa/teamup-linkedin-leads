@@ -2,6 +2,7 @@ import os
 import time
 import json
 import logging
+import threading
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -19,6 +20,7 @@ ZOHO_API_BASE = "https://www.zohoapis.com"
 ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com"
 
 _token_cache = {"access_token": None, "expires_at": 0}
+_token_lock = threading.Lock()
 
 
 def get_zoho_access_token():
@@ -26,25 +28,30 @@ def get_zoho_access_token():
     if _token_cache["access_token"] and _token_cache["expires_at"] > now + 60:
         return _token_cache["access_token"]
 
-    logger.info("Refreshing Zoho access token...")
-    resp = requests.post(
-        f"{ZOHO_ACCOUNTS_URL}/oauth/v2/token",
-        params={
-            "grant_type": "refresh_token",
-            "client_id": ZOHO_CLIENT_ID,
-            "client_secret": ZOHO_CLIENT_SECRET,
-            "refresh_token": ZOHO_REFRESH_TOKEN,
-        },
-    )
-    data = resp.json()
-    if "access_token" not in data:
-        logger.error(f"Zoho token refresh failed: {data}")
-        raise Exception(f"Zoho token refresh failed: {data.get('error', 'unknown')}")
+    with _token_lock:
+        now = time.time()
+        if _token_cache["access_token"] and _token_cache["expires_at"] > now + 60:
+            return _token_cache["access_token"]
 
-    _token_cache["access_token"] = data["access_token"]
-    _token_cache["expires_at"] = now + data.get("expires_in", 3600)
-    logger.info("Zoho access token refreshed")
-    return _token_cache["access_token"]
+        logger.info("Refreshing Zoho access token...")
+        resp = requests.post(
+            f"{ZOHO_ACCOUNTS_URL}/oauth/v2/token",
+            params={
+                "grant_type": "refresh_token",
+                "client_id": ZOHO_CLIENT_ID,
+                "client_secret": ZOHO_CLIENT_SECRET,
+                "refresh_token": ZOHO_REFRESH_TOKEN,
+            },
+        )
+        data = resp.json()
+        if "access_token" not in data:
+            logger.error(f"Zoho token refresh failed: {data}")
+            raise Exception(f"Zoho token refresh failed: {data.get('error', 'unknown')}")
+
+        _token_cache["access_token"] = data["access_token"]
+        _token_cache["expires_at"] = now + data.get("expires_in", 3600)
+        logger.info("Zoho access token refreshed")
+        return _token_cache["access_token"]
 
 
 def create_zoho_lead(lead_data):
@@ -123,10 +130,6 @@ def receive_lead():
         logger.error(f"Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-@app.route("/api/lead", methods=["OPTIONS"])
-def lead_options():
-    return "", 204
 
 
 if __name__ == "__main__":

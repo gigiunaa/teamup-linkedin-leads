@@ -1,3 +1,15 @@
+chrome.alarms.create("keepAlive", { periodInMinutes: 14 });
+
+chrome.alarms.onAlarm.addListener(function (alarm) {
+  if (alarm.name === "keepAlive") {
+    chrome.storage.sync.get(["apiUrl"], function (stored) {
+      if (!stored.apiUrl) return;
+      var healthUrl = stored.apiUrl.replace(/\/api\/lead\/?$/, "/health");
+      fetch(healthUrl).catch(function () {});
+    });
+  }
+});
+
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (message.action === "sendLead") {
     chrome.storage.sync.get(["apiUrl"], function (stored) {

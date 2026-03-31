@@ -135,7 +135,10 @@
     }).catch(function () {});
   }
 
+  var _submitting = false;
+
   function handleSubmit() {
+    if (_submitting) return;
     var btn = document.getElementById("tu-submit");
     var status = document.getElementById("tu-status");
     var firstName = document.getElementById("tu-fname").value.trim();
@@ -150,6 +153,7 @@
     if (!firstName || !lastName) { showStatus(status, "First and last name required", "error"); return; }
     if (!email || email.indexOf("@") === -1) { showStatus(status, "Valid email required", "error"); return; }
 
+    _submitting = true;
     btn.disabled = true;
     btn.textContent = "Sending...";
     showStatus(status, "Sending to Zoho CRM...", "loading");
@@ -169,6 +173,7 @@
         setTimeout(function () { var x = document.getElementById(PANEL_ID); if (x) x.remove(); }, 1500);
       } else {
         showStatus(status, "Error: " + ((resp && resp.error) || "Unknown"), "error");
+        _submitting = false;
         btn.disabled = false;
         btn.textContent = "Retry";
       }
@@ -181,12 +186,17 @@
   function init() { setTimeout(createButton, 1500); }
 
   var lastUrl = location.href;
+  var navTimer;
   new MutationObserver(function () {
     if (location.href !== lastUrl) {
-      lastUrl = location.href;
-      var a = document.getElementById(BTN_ID); if (a) a.remove();
-      var b = document.getElementById(PANEL_ID); if (b) b.remove();
-      if (location.href.indexOf("/in/") !== -1 || location.href.indexOf("/sales/lead/") !== -1) init();
+      clearTimeout(navTimer);
+      navTimer = setTimeout(function () {
+        lastUrl = location.href;
+        _submitting = false;
+        var a = document.getElementById(BTN_ID); if (a) a.remove();
+        var b = document.getElementById(PANEL_ID); if (b) b.remove();
+        if (location.href.indexOf("/in/") !== -1 || location.href.indexOf("/sales/lead/") !== -1) init();
+      }, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
