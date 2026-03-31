@@ -168,9 +168,9 @@
       }
     }, function (resp) {
       if (resp && resp.success) {
-        showStatus(status, "Lead created in Zoho CRM!", "success");
-        btn.textContent = "Done!";
-        setTimeout(function () { var x = document.getElementById(PANEL_ID); if (x) x.remove(); }, 1500);
+        showStatus(status, "✅ " + firstName + " " + lastName + " — Zoho CRM-ში გადატანილია!", "success");
+        btn.textContent = "გაკეთდა!";
+        btn.style.background = "#0f6e56";
       } else {
         showStatus(status, "Error: " + ((resp && resp.error) || "Unknown"), "error");
         _submitting = false;
