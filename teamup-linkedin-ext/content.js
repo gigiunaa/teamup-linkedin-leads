@@ -68,10 +68,30 @@
       document.querySelector(".pv-text-details--left-panel .text-body-medium");
     if (headEl) data.headline = headEl.textContent.trim();
 
+    if (!data.headline && nameEl) {
+      var sibling = nameEl.parentElement;
+      while (sibling && !data.headline) {
+        sibling = sibling.nextElementSibling;
+        if (sibling) {
+          var txt = sibling.textContent.trim();
+          if (txt && txt.length > 5 && txt.length < 200 &&
+              !/notification|connection|follow|message|more$/i.test(txt) &&
+              txt.split(/\s+/).length >= 2) {
+            data.headline = txt;
+          }
+        }
+      }
+    }
+
     var companyEl =
       document.querySelector(".pv-text-details--right-panel .inline-show-more-text") ||
       document.querySelector('button[aria-label*="Current company"] span');
     if (companyEl) data.company = companyEl.textContent.trim();
+
+    if (!data.company && data.headline) {
+      var atMatch = data.headline.match(/(?:at|@)\s+(.+)/i);
+      if (atMatch) data.company = atMatch[1].trim();
+    }
 
     return data;
   }
@@ -130,6 +150,13 @@
           el.value = text;
           var msg = document.getElementById("tu-clip-msg");
           if (msg) { msg.textContent = "Email auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
+        }
+      } else if (text && /^\+?\d[\d\s\-()]{6,}$/.test(text) && text.length < 30) {
+        var phoneEl = document.getElementById("tu-phone");
+        if (phoneEl && !phoneEl.value) {
+          phoneEl.value = text;
+          var msg = document.getElementById("tu-clip-msg");
+          if (msg) { msg.textContent = "Phone auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
         }
       }
     }).catch(function () {});
