@@ -111,12 +111,17 @@ def create_salesforge_contact(lead_data):
 
     payload = {
         "firstName": lead_data.get("firstName", ""),
-        "lastName": lead_data.get("lastName", ""),
-        "email": lead_data.get("email", ""),
-        "company": lead_data.get("company") or "",
-        "linkedinUrl": lead_data.get("linkedinUrl") or "",
-        "position": lead_data.get("headline") or "",
     }
+    if lead_data.get("lastName"):
+        payload["lastName"] = lead_data["lastName"]
+    if lead_data.get("email"):
+        payload["email"] = lead_data["email"]
+    if lead_data.get("company"):
+        payload["company"] = lead_data["company"]
+    if lead_data.get("linkedinUrl"):
+        payload["linkedinUrl"] = lead_data["linkedinUrl"]
+    if lead_data.get("headline"):
+        payload["position"] = lead_data["headline"]
 
     resp = requests.post(
         f"https://api.salesforge.ai/public/v2/workspaces/{SALESFORGE_WORKSPACE_ID}/contacts",
