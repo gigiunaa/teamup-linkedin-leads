@@ -168,8 +168,8 @@
       }
     }, function (resp) {
       if (resp && resp.success) {
-        showStatus(status, "✅ " + firstName + " " + lastName + " — Zoho CRM-ში გადატანილია!", "success");
-        btn.textContent = "გაკეთდა!";
+        showStatus(status, "✅ " + firstName + " " + lastName + " — sent to Zoho CRM!", "success");
+        btn.textContent = "Done!";
         btn.style.background = "#0f6e56";
       } else {
         showStatus(status, "Error: " + ((resp && resp.error) || "Unknown"), "error");
