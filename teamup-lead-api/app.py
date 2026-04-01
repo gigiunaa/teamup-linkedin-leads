@@ -68,7 +68,7 @@ def create_zoho_lead(lead_data):
                 "Phone": lead_data.get("phone") or "",
                 "Company": lead_data.get("company") or "Unknown",
                 "Lead_Source": "Sales Team",
-                "Tag": [{"name": "Inbound"}],
+                "Tag": [{"name": "Outbound"}],
                 "Description": (
                     f"LinkedIn: {lead_data.get('linkedinUrl', '')}\n"
                     f"Headline: {lead_data.get('headline', '')}\n"
@@ -183,6 +183,13 @@ def receive_lead():
         logger.error(f"Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+
+@app.route("/api/webhook/salesforge", methods=["POST"])
+def salesforge_webhook():
+    data = request.get_json(silent=True) or {}
+    logger.info(f"Salesforge webhook payload: {json.dumps(data, indent=2)}")
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
