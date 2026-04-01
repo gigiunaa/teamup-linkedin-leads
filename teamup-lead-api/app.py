@@ -19,6 +19,9 @@ ZOHO_REFRESH_TOKEN = os.environ.get("ZOHO_REFRESH_TOKEN")
 ZOHO_API_BASE = "https://www.zohoapis.com"
 ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com"
 
+SALESFORGE_API_KEY = os.environ.get("SALESFORGE_API_KEY")
+SALESFORGE_WORKSPACE_ID = os.environ.get("SALESFORGE_WORKSPACE_ID", "wks_tl63uf09qzsj1om3t1his")
+
 _token_cache = {"access_token": None, "expires_at": 0}
 _token_lock = threading.Lock()
 
@@ -101,6 +104,38 @@ def create_zoho_lead(lead_data):
     return {"success": False, "error": json.dumps(result)}
 
 
+def create_salesforge_contact(lead_data):
+    if not SALESFORGE_API_KEY:
+        logger.warning("SALESFORGE_API_KEY not set, skipping Salesforge")
+        return {"success": False, "error": "API key not configured"}
+
+    payload = {
+        "first_name": lead_data.get("firstName", ""),
+        "last_name": lead_data.get("lastName", ""),
+        "email": lead_data.get("email", ""),
+        "phone_number": lead_data.get("phone") or "",
+        "company_name": lead_data.get("company") or "",
+        "country": lead_data.get("country") or "",
+        "linkedin_url": lead_data.get("linkedinUrl") or "",
+        "job_title": lead_data.get("headline") or "",
+    }
+
+    resp = requests.post(
+        f"https://api.salesforge.ai/public/v2/workspaces/{SALESFORGE_WORKSPACE_ID}/contacts",
+        headers={
+            "Authorization": f"Bearer {SALESFORGE_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
+    logger.info(f"Salesforge response: {resp.status_code} - {resp.text}")
+
+    if resp.status_code in (200, 201):
+        return {"success": True}
+
+    return {"success": False, "error": f"Salesforge {resp.status_code}: {resp.text}"}
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "service": "teamup-lead-api"})
@@ -119,13 +154,28 @@ def receive_lead():
     logger.info(f"Lead: {data.get('firstName')} {data.get('lastName')} <{data.get('email')}>")
 
     try:
-        result = create_zoho_lead(data)
-        if result.get("duplicate"):
-            return jsonify({"success": True, "message": "Lead already exists", "zohoId": result.get("id")})
-        if result["success"]:
-            return jsonify({"success": True, "message": "Lead created in Zoho CRM", "zohoId": result.get("id")})
+        zoho_result = create_zoho_lead(data)
+        sf_result = create_salesforge_contact(data)
+
+        zoho_ok = zoho_result.get("success")
+        sf_ok = sf_result.get("success")
+
+        if not zoho_ok:
+            return jsonify({"success": False, "error": "Zoho: " + zoho_result.get("error", "unknown")}), 500
+
+        msg = "Lead created in Zoho CRM"
+        if zoho_result.get("duplicate"):
+            msg = "Lead already exists in Zoho"
+        if sf_ok:
+            msg += " + Salesforge"
         else:
-            return jsonify({"success": False, "error": result.get("error")}), 500
+            msg += " (Salesforge failed: " + sf_result.get("error", "unknown") + ")"
+
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "zohoId": zoho_result.get("id"),
+        })
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
