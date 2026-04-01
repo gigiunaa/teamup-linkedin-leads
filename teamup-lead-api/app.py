@@ -185,13 +185,6 @@ def receive_lead():
 
 
 
-@app.route("/api/webhook/salesforge", methods=["POST"])
-def salesforge_webhook():
-    data = request.get_json(silent=True) or {}
-    logger.info(f"Salesforge webhook payload: {json.dumps(data, indent=2)}")
-    return jsonify({"ok": True})
-
-
 def find_zoho_lead_by_email(email):
     token = get_zoho_access_token()
     resp = requests.get(
