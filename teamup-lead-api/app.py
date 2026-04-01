@@ -59,28 +59,43 @@ def get_zoho_access_token():
 
 def create_zoho_lead(lead_data):
     token = get_zoho_access_token()
-    payload = {
-        "data": [
-            {
-                "First_Name": lead_data.get("firstName", ""),
-                "Last_Name": lead_data.get("lastName", "Unknown"),
-                "Email": lead_data.get("email", ""),
-                "Phone": lead_data.get("phone") or "",
-                "Company": lead_data.get("company") or "Unknown",
-                "Lead_Source": "Sales Team",
-                "Tag": [{"name": "Outbound"}],
-                "Description": (
-                    f"LinkedIn: {lead_data.get('linkedinUrl', '')}\n"
-                    f"Headline: {lead_data.get('headline', '')}\n"
-                    f"Country: {lead_data.get('country', '')}"
-                ),
-            }
-        ],
-        "trigger": ["workflow"],
+    lead = {
+        "First_Name": lead_data.get("firstName", ""),
+        "Last_Name": lead_data.get("lastName", "Unknown"),
+        "Email": lead_data.get("email", ""),
+        "Lead_Source": "Sales Team",
+        "Tag": [{"name": "Outbound"}],
     }
-    country = lead_data.get("country")
-    if country:
-        payload["data"][0]["Country"] = country
+
+    if lead_data.get("phone"):
+        lead["Phone"] = lead_data["phone"]
+    if lead_data.get("company"):
+        lead["Company"] = lead_data["company"]
+    if lead_data.get("headline"):
+        lead["Designation"] = lead_data["headline"]
+    if lead_data.get("linkedinUrl"):
+        lead["Linkedin"] = lead_data["linkedinUrl"]
+
+    location = lead_data.get("country", "")
+    if location:
+        if "," in location:
+            parts = [p.strip() for p in location.split(",")]
+            lead["City"] = parts[0]
+            lead["Country"] = parts[-1]
+        else:
+            lead["Country"] = location
+
+    desc_parts = []
+    if lead_data.get("linkedinUrl"):
+        desc_parts.append(f"LinkedIn: {lead_data['linkedinUrl']}")
+    if lead_data.get("headline"):
+        desc_parts.append(f"Headline: {lead_data['headline']}")
+    if location:
+        desc_parts.append(f"Location: {location}")
+    if desc_parts:
+        lead["Description"] = "\n".join(desc_parts)
+
+    payload = {"data": [lead], "trigger": ["workflow"]}
 
     resp = requests.post(
         f"{ZOHO_API_BASE}/crm/v2/Leads",
@@ -158,18 +173,21 @@ def receive_lead():
 
     try:
         zoho_result = create_zoho_lead(data)
-        sf_result = create_salesforge_contact(data)
-
         zoho_ok = zoho_result.get("success")
-        sf_ok = sf_result.get("success")
 
         if not zoho_ok:
             return jsonify({"success": False, "error": "Zoho: " + zoho_result.get("error", "unknown")}), 500
 
+        sf_result = {"success": False, "skipped": True}
+        if not zoho_result.get("duplicate"):
+            sf_result = create_salesforge_contact(data)
+
+        sf_ok = sf_result.get("success")
+
         msg = "Lead created in Zoho CRM"
         if zoho_result.get("duplicate"):
-            msg = "Lead already exists in Zoho"
-        if sf_ok:
+            msg = "Lead already exists in Zoho (Salesforge skipped)"
+        elif sf_ok:
             msg += " + Salesforge"
         else:
             msg += " (Salesforge failed: " + sf_result.get("error", "unknown") + ")"
