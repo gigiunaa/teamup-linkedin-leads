@@ -110,20 +110,18 @@ def create_salesforge_contact(lead_data):
         return {"success": False, "error": "API key not configured"}
 
     payload = {
-        "first_name": lead_data.get("firstName", ""),
-        "last_name": lead_data.get("lastName", ""),
+        "firstName": lead_data.get("firstName", ""),
+        "lastName": lead_data.get("lastName", ""),
         "email": lead_data.get("email", ""),
-        "phone_number": lead_data.get("phone") or "",
-        "company_name": lead_data.get("company") or "",
-        "country": lead_data.get("country") or "",
-        "linkedin_url": lead_data.get("linkedinUrl") or "",
-        "job_title": lead_data.get("headline") or "",
+        "company": lead_data.get("company") or "",
+        "linkedinUrl": lead_data.get("linkedinUrl") or "",
+        "position": lead_data.get("headline") or "",
     }
 
     resp = requests.post(
         f"https://api.salesforge.ai/public/v2/workspaces/{SALESFORGE_WORKSPACE_ID}/contacts",
         headers={
-            "Authorization": f"Bearer {SALESFORGE_API_KEY}",
+            "Authorization": SALESFORGE_API_KEY,
             "Content-Type": "application/json",
         },
         json=payload,
