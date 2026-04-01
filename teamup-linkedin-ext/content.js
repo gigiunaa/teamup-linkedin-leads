@@ -49,7 +49,10 @@
       document.querySelector(".profile-topcard__location-data");
 
     if (locEl) {
-      data.country = locEl.textContent.trim();
+      var locText = locEl.textContent.trim();
+      if (locText && !/followed by|others you know|connection|follower|mutual/i.test(locText) && locText.length < 60) {
+        data.country = locText;
+      }
     }
 
     if (!data.country) {
@@ -144,23 +147,24 @@
     if (!navigator.clipboard || !navigator.clipboard.readText) return;
     navigator.clipboard.readText().then(function (text) {
       text = (text || "").trim();
+      var filled = [];
       if (text && text.indexOf("@") !== -1 && text.indexOf(".") !== -1 && text.length < 100) {
         var el = document.getElementById("tu-email");
-        if (el && !el.value) {
-          el.value = text;
-          var msg = document.getElementById("tu-clip-msg");
-          if (msg) { msg.textContent = "Email auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
-        }
+        if (el && !el.value) { el.value = text; filled.push("email"); }
       } else if (text && /^\+?\d[\d\s\-()]{6,}$/.test(text) && text.length < 30) {
         var phoneEl = document.getElementById("tu-phone");
-        if (phoneEl && !phoneEl.value) {
-          phoneEl.value = text;
-          var msg = document.getElementById("tu-clip-msg");
-          if (msg) { msg.textContent = "Phone auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
-        }
+        if (phoneEl && !phoneEl.value) { phoneEl.value = text; filled.push("phone"); }
+      }
+      if (filled.length) {
+        var msg = document.getElementById("tu-clip-msg");
+        if (msg) { msg.textContent = filled.join(" & ") + " auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
       }
     }).catch(function () {});
   }
+
+  window.addEventListener("focus", function () {
+    if (document.getElementById(PANEL_ID)) tryClipboard();
+  });
 
   var _submitting = false;
 
