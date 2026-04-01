@@ -144,27 +144,38 @@
   }
 
   function tryClipboard() {
-    if (!navigator.clipboard || !navigator.clipboard.readText) return;
-    navigator.clipboard.readText().then(function (text) {
-      text = (text || "").trim();
+    chrome.storage.local.get(["tuEmail", "tuPhone"], function (stored) {
       var filled = [];
-      if (text && text.indexOf("@") !== -1 && text.indexOf(".") !== -1 && text.length < 100) {
-        var el = document.getElementById("tu-email");
-        if (el && !el.value) { el.value = text; filled.push("email"); }
-      } else if (text && /^\+?\d[\d\s\-()]{6,}$/.test(text) && text.length < 30) {
-        var phoneEl = document.getElementById("tu-phone");
-        if (phoneEl && !phoneEl.value) { phoneEl.value = text; filled.push("phone"); }
+      var emailEl = document.getElementById("tu-email");
+      var phoneEl = document.getElementById("tu-phone");
+
+      if (stored.tuEmail && emailEl && !emailEl.value) {
+        emailEl.value = stored.tuEmail;
+        filled.push("email");
       }
+      if (stored.tuPhone && phoneEl && !phoneEl.value) {
+        phoneEl.value = stored.tuPhone;
+        filled.push("phone");
+      }
+
       if (filled.length) {
         var msg = document.getElementById("tu-clip-msg");
-        if (msg) { msg.textContent = filled.join(" & ") + " auto-filled from clipboard"; msg.className = "tu-sf-badge"; }
+        if (msg) { msg.textContent = filled.join(" & ") + " auto-filled from Salesforge"; msg.className = "tu-sf-badge"; }
       }
-    }).catch(function () {});
-  }
 
-  window.addEventListener("focus", function () {
-    if (document.getElementById(PANEL_ID)) tryClipboard();
-  });
+      // Also try current clipboard for anything not yet filled
+      if ((!stored.tuEmail || emailEl.value) && (!stored.tuPhone || phoneEl.value)) return;
+      if (!navigator.clipboard || !navigator.clipboard.readText) return;
+      navigator.clipboard.readText().then(function (text) {
+        text = (text || "").trim();
+        if (text && text.indexOf("@") !== -1 && text.indexOf(".") !== -1 && text.length < 100) {
+          if (emailEl && !emailEl.value) { emailEl.value = text; }
+        } else if (text && /^\+?\d[\d\s\-()]{6,}$/.test(text) && text.length < 30) {
+          if (phoneEl && !phoneEl.value) { phoneEl.value = text; }
+        }
+      }).catch(function () {});
+    });
+  }
 
   var _submitting = false;
 
@@ -202,6 +213,7 @@
         showStatus(status, "✅ " + firstName + " " + lastName + " — sent to Zoho CRM!", "success");
         btn.textContent = "Done!";
         btn.style.background = "#0f6e56";
+        chrome.storage.local.remove(["tuEmail", "tuPhone"]);
       } else {
         showStatus(status, "Error: " + ((resp && resp.error) || "Unknown"), "error");
         _submitting = false;
