@@ -14,86 +14,85 @@
       profileUrl: window.location.href.split("?")[0]
     };
 
-    var nameEl =
-      document.querySelector("h1.text-heading-xlarge") ||
-      document.querySelector("h1.inline.t-24") ||
-      document.querySelector(".pv-text-details--left-panel h1") ||
-      document.querySelector('[data-anonymize="person-name"]') ||
-      document.querySelector(".profile-topcard-person-entity__name");
+    // Primary: Topcard section (new LinkedIn layout)
+    var topcard = document.querySelector('[componentkey*="Topcard"]');
+    if (topcard) {
+      // Name: h2 inside Topcard
+      var nameH2 = topcard.querySelector("h2");
+      if (nameH2) {
+        var parts = nameH2.textContent.trim().split(/\s+/);
+        data.firstName = parts[0] || "";
+        data.lastName = parts.slice(1).join(" ") || "";
+      }
 
-    if (!nameEl) {
-      var allH2 = document.querySelectorAll("h2");
-      for (var i = 0; i < allH2.length; i++) {
-        var t = allH2[i].textContent.trim();
-        if (
-          t &&
-          !/notification|about|activity|service|experience|education|skill|more profile/i.test(t) &&
-          t.split(/\s+/).length >= 2 &&
-          t.split(/\s+/).length <= 5
-        ) {
-          nameEl = allH2[i];
+      // After the name h2, <p> tags contain: headline, company line, location
+      var pTags = topcard.querySelectorAll("p");
+      var infoTexts = [];
+      for (var i = 0; i < pTags.length; i++) {
+        var txt = pTags[i].textContent.trim();
+        if (txt && txt.length > 1 && txt.length < 120 &&
+            !/^\d+\s*(follower|connection)/i.test(txt) &&
+            !/followed by|others you know|mutual/i.test(txt) &&
+            txt !== "·" && !/^· \d/.test(txt)) {
+          infoTexts.push(txt);
+        }
+      }
+      // infoTexts order: [name, "· 1st/2nd", headline, "company · school", location, ...]
+      // Find headline: first text that isn't the name and isn't a degree indicator
+      for (var j = 0; j < infoTexts.length; j++) {
+        var t = infoTexts[j];
+        if (t === data.firstName + " " + data.lastName) continue;
+        if (/^·\s*(1st|2nd|3rd)/i.test(t)) continue;
+        if (!data.headline) {
+          data.headline = t;
+        } else if (!data.company && /·/.test(t)) {
+          // "Gegidze · Free University of Tbilisi" → take first part as company
+          data.company = t.split("·")[0].trim();
+        } else if (!data.country && /,/.test(t) && t.length < 60) {
+          data.country = t;
           break;
         }
       }
     }
 
-    if (nameEl) {
-      var parts = nameEl.textContent.trim().split(/\s+/);
-      data.firstName = parts[0] || "";
-      data.lastName = parts.slice(1).join(" ") || "";
+    // Fallback: old LinkedIn layout selectors
+    if (!data.firstName) {
+      var nameEl =
+        document.querySelector("h1.text-heading-xlarge") ||
+        document.querySelector("h1.inline.t-24") ||
+        document.querySelector(".pv-text-details--left-panel h1") ||
+        document.querySelector(".profile-topcard-person-entity__name");
+      if (nameEl) {
+        var parts2 = nameEl.textContent.trim().split(/\s+/);
+        data.firstName = parts2[0] || "";
+        data.lastName = parts2.slice(1).join(" ") || "";
+      }
     }
 
-    var locEl =
-      document.querySelector(".pv-text-details--left-panel .text-body-small:not(.hoverable-link-text)") ||
-      document.querySelector('span.text-body-small[aria-hidden="true"]') ||
-      document.querySelector(".profile-topcard__location-data");
+    if (!data.headline) {
+      var headEl =
+        document.querySelector(".text-body-medium.break-words") ||
+        document.querySelector(".pv-text-details--left-panel .text-body-medium");
+      if (headEl) data.headline = headEl.textContent.trim();
+    }
 
-    if (locEl) {
-      var locText = locEl.textContent.trim();
-      if (locText && !/followed by|others you know|connection|follower|mutual/i.test(locText) && locText.length < 60) {
-        data.country = locText;
-      }
+    if (!data.company) {
+      var companyEl =
+        document.querySelector(".pv-text-details--right-panel .inline-show-more-text") ||
+        document.querySelector('button[aria-label*="Current company"] span');
+      if (companyEl) data.company = companyEl.textContent.trim();
     }
 
     if (!data.country) {
-      var allP = document.querySelectorAll("p");
-      for (var j = 0; j < allP.length; j++) {
-        var pt = allP[j].textContent.trim();
-        if (/^[A-Z][\w\s\u00C0-\u024F-]+,\s*[A-Z][\w\s\u00C0-\u024F-]+$/.test(pt) && pt.length < 60) {
-          data.country = pt;
-          break;
+      var locEl =
+        document.querySelector(".pv-text-details--left-panel .text-body-small:not(.hoverable-link-text)") ||
+        document.querySelector(".profile-topcard__location-data");
+      if (locEl) {
+        var locText = locEl.textContent.trim();
+        if (locText && !/followed by|others you know/i.test(locText) && locText.length < 60) {
+          data.country = locText;
         }
       }
-    }
-
-    var headEl =
-      document.querySelector(".text-body-medium.break-words") ||
-      document.querySelector(".pv-text-details--left-panel .text-body-medium");
-    if (headEl) data.headline = headEl.textContent.trim();
-
-    if (!data.headline && nameEl) {
-      var sibling = nameEl.parentElement;
-      while (sibling && !data.headline) {
-        sibling = sibling.nextElementSibling;
-        if (sibling) {
-          var txt = sibling.textContent.trim();
-          if (txt && txt.length > 5 && txt.length < 200 &&
-              !/notification|connection|follow|message|more$/i.test(txt) &&
-              txt.split(/\s+/).length >= 2) {
-            data.headline = txt;
-          }
-        }
-      }
-    }
-
-    var companyEl =
-      document.querySelector(".pv-text-details--right-panel .inline-show-more-text") ||
-      document.querySelector('button[aria-label*="Current company"] span');
-    if (companyEl) data.company = companyEl.textContent.trim();
-
-    if (!data.company && data.headline) {
-      var atMatch = data.headline.match(/(?:at|@)\s+(.+)/i);
-      if (atMatch) data.company = atMatch[1].trim();
     }
 
     // Fallback: extract from Experience section
