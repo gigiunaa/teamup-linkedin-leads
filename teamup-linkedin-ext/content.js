@@ -108,30 +108,46 @@
 
   function extractFromExperience() {
     var result = { title: "", company: "" };
-    var anchor = document.getElementById("experience");
-    if (!anchor) return result;
 
-    var section = anchor.closest("section") || anchor.parentElement;
-    if (!section) return result;
-
-    var firstLi = section.querySelector("li");
-    if (!firstLi) return result;
-
-    var pTags = firstLi.querySelectorAll("p");
-    var texts = [];
-    for (var i = 0; i < pTags.length; i++) {
-      var txt = pTags[i].textContent.trim();
-      if (txt && txt.length > 1 && txt.length < 80 && texts.indexOf(txt) === -1) {
-        texts.push(txt);
+    // Find experience section by componentkey or h2 text
+    var expSection = document.querySelector('[componentkey*="ExperienceTopLevelSection"]');
+    if (!expSection) {
+      var h2s = document.querySelectorAll("h2");
+      for (var i = 0; i < h2s.length; i++) {
+        if (/^\s*Experience\s*$/i.test(h2s[i].textContent)) {
+          expSection = h2s[i].closest("section") || h2s[i].parentElement;
+          break;
+        }
       }
     }
+    if (!expSection) return result;
 
-    // LinkedIn experience <p> order: company name first, then job title
-    if (texts.length >= 2) {
-      result.company = texts[0];
-      result.title = texts[1];
-    } else if (texts.length === 1) {
-      result.title = texts[0];
+    // Company: from first logo alt attribute ("Gegidze logo" → "Gegidze")
+    var logoImg = expSection.querySelector("img[alt$=' logo']");
+    if (logoImg) {
+      result.company = (logoImg.getAttribute("alt") || "").replace(/\s*logo\s*$/i, "").trim();
+    }
+
+    // Title: first <li> → first <p> (grouped roles like "Chief Marketing Officer")
+    var firstLi = expSection.querySelector("ul li");
+    if (firstLi) {
+      var firstP = firstLi.querySelector("p");
+      if (firstP) result.title = firstP.textContent.trim();
+    }
+
+    // Fallback for single-role entries (no <ul>): first <p> that isn't company/duration
+    if (!result.title) {
+      var pTags = expSection.querySelectorAll("p");
+      for (var j = 0; j < pTags.length; j++) {
+        var txt = pTags[j].textContent.trim();
+        if (txt && txt.length > 2 && txt.length < 80 &&
+            txt !== result.company && !/experience/i.test(txt) &&
+            !/full.time|part.time|contract|freelance|remote|hybrid|on.site/i.test(txt) &&
+            !/\d+\s*(yr|mo|year|month)/i.test(txt)) {
+          result.title = txt;
+          break;
+        }
+      }
     }
 
     return result;
