@@ -183,7 +183,7 @@
       '<div class="tu-field"><label>Last name</label><input type="text" id="tu-lname" value="' + esc(p.lastName) + '"/></div></div>' +
       '<div class="tu-field"><label>Email</label><input type="email" id="tu-email" placeholder="name@company.com"/></div>' +
       '<div class="tu-field"><label>Phone</label><input type="tel" id="tu-phone" placeholder="+1..."/></div>' +
-      '<div class="tu-field"><label>Headline</label><input type="text" id="tu-head" value="' + esc(p.headline) + '"/></div>' +
+      '<div class="tu-field"><label>Title</label><input type="text" id="tu-head" value="' + esc(p.headline) + '"/></div>' +
       '<div class="tu-row"><div class="tu-field"><label>Company</label><input type="text" id="tu-comp" value="' + esc(p.company) + '"/></div>' +
       '<div class="tu-field"><label>Country</label><input type="text" id="tu-country" value="' + esc(p.country) + '"/></div></div>' +
       '<div class="tu-field"><label>LinkedIn URL</label><input type="text" id="tu-url" value="' + esc(p.profileUrl) + '" readonly/></div>' +
