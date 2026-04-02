@@ -96,7 +96,45 @@
       if (atMatch) data.company = atMatch[1].trim();
     }
 
+    // Fallback: extract from Experience section
+    if (!data.headline || !data.company) {
+      var expData = extractFromExperience();
+      if (!data.headline && expData.title) data.headline = expData.title;
+      if (!data.company && expData.company) data.company = expData.company;
+    }
+
     return data;
+  }
+
+  function extractFromExperience() {
+    var result = { title: "", company: "" };
+    var anchor = document.getElementById("experience");
+    if (!anchor) return result;
+
+    var section = anchor.closest("section") || anchor.parentElement;
+    if (!section) return result;
+
+    var firstLi = section.querySelector("li");
+    if (!firstLi) return result;
+
+    var pTags = firstLi.querySelectorAll("p");
+    var texts = [];
+    for (var i = 0; i < pTags.length; i++) {
+      var txt = pTags[i].textContent.trim();
+      if (txt && txt.length > 1 && txt.length < 80 && texts.indexOf(txt) === -1) {
+        texts.push(txt);
+      }
+    }
+
+    // LinkedIn experience <p> order: company name first, then job title
+    if (texts.length >= 2) {
+      result.company = texts[0];
+      result.title = texts[1];
+    } else if (texts.length === 1) {
+      result.title = texts[0];
+    }
+
+    return result;
   }
 
   function createButton() {
@@ -129,11 +167,11 @@
       '<div class="tu-row"><div class="tu-field"><label>First name</label><input type="text" id="tu-fname" value="' + esc(p.firstName) + '"/></div>' +
       '<div class="tu-field"><label>Last name</label><input type="text" id="tu-lname" value="' + esc(p.lastName) + '"/></div></div>' +
       '<div class="tu-field"><label>Email</label><input type="email" id="tu-email" placeholder="name@company.com"/></div>' +
-      '<div class="tu-row"><div class="tu-field"><label>Phone <span class="tu-hint">(optional)</span></label><input type="tel" id="tu-phone" placeholder="+1..."/></div>' +
+      '<div class="tu-field"><label>Phone</label><input type="tel" id="tu-phone" placeholder="+1..."/></div>' +
+      '<div class="tu-field"><label>Headline</label><input type="text" id="tu-head" value="' + esc(p.headline) + '"/></div>' +
+      '<div class="tu-row"><div class="tu-field"><label>Company</label><input type="text" id="tu-comp" value="' + esc(p.company) + '"/></div>' +
       '<div class="tu-field"><label>Country</label><input type="text" id="tu-country" value="' + esc(p.country) + '"/></div></div>' +
-      '<input type="hidden" id="tu-url" value="' + esc(p.profileUrl) + '"/>' +
-      '<input type="hidden" id="tu-head" value="' + esc(p.headline) + '"/>' +
-      '<input type="hidden" id="tu-comp" value="' + esc(p.company) + '"/>' +
+      '<div class="tu-field"><label>LinkedIn URL</label><input type="text" id="tu-url" value="' + esc(p.profileUrl) + '" readonly/></div>' +
       '<div id="tu-status" class="tu-status"></div>' +
       '<button id="tu-submit" class="tu-btn">Send to Zoho CRM</button></div>';
 
