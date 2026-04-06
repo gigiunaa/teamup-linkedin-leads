@@ -64,6 +64,8 @@ def create_zoho_lead(lead_data):
         "Last_Name": lead_data.get("lastName", "Unknown"),
         "Email": lead_data.get("email", ""),
         "Lead_Source": "Sales Team",
+        "Lead_Status": "New Lead",
+        "Owner": {"id": "4767507000054212001"},
         "Tag": [{"name": "Outbound"}],
     }
 
